@@ -1,26 +1,25 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React from 'react'
 
-function App() {
+import Loader from './components/Loader'
+
+import './App.css'
+
+
+const App = () => {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+    <Loader
+      radius={ 150 }
+      sides={ 3 }
+      depth={ 10 }
+      colors={ {
+        background: '#f0f0f0',
+        stroke: null,
+        base: '#222222',
+        child: '#f0f0f0'
+      } }
+      renderBase
+    />
+  )
 }
 
-export default App;
+export default App
