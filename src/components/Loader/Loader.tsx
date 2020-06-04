@@ -1,5 +1,11 @@
-import React, { useCallback, useRef } from 'react'
+import React, {
+  useCallback,
+  useRef,
+  useEffect
+} from 'react'
 import { gsap } from 'gsap'
+
+import { usePointsInterpolation } from '../../hooks'
 
 
 interface IPoint {
@@ -7,7 +13,7 @@ interface IPoint {
   y: number
 }
 
-interface LoaderPropsType {
+interface ILoaderProps {
   radius: number
   sides: number
   depth: number
@@ -17,25 +23,32 @@ interface LoaderPropsType {
     base: string
     child: string
   }
-  renderBase?: boolean
+  based?: boolean
 }
 
-const Loader: React.FC<LoaderPropsType> = ( {
+const Loader: React.FC<ILoaderProps> = ( {
   radius,
   sides,
   depth,
   colors,
-  renderBase
-}: LoaderPropsType ) => {
+  based
+} ) => {
+
   const canvasRef = useRef<HTMLCanvasElement | null>( null )
-  const points = useRef<IPoint[]>( [] )
+  const tween = useRef<gsap.core.Tween | null>( null )
+  const [ basePoints, getChildrenPoints ] = usePointsInterpolation( { radius, sides, depth } )
+
+  useEffect( () => {
+    return () => {
+      tween.current?.kill()
+    }
+  }, [] )
 
   const canvasRefCallback = useCallback( ( node: HTMLCanvasElement ) => {
 
     if ( node ) {
       canvasRef.current = node
       const context = node.getContext( '2d' )
-      points.current = getRegularPolygonPoints()
 
       if ( context ) {
         animate( context )
@@ -45,7 +58,7 @@ const Loader: React.FC<LoaderPropsType> = ( {
 
   const animate = ( context: CanvasRenderingContext2D ) => {
 
-    gsap.to( { value: 0 }, {
+    tween.current = gsap.to( { value: 0 }, {
       value: 1,
       duration: 2,
       repeat: 3,
@@ -58,123 +71,72 @@ const Loader: React.FC<LoaderPropsType> = ( {
         context.lineWidth = 1.5
 
 
-        if ( renderBase ) {
-          render( context )
+        if ( based ) {
+          renderBase( context )
         }
 
+        const children = getChildrenPoints( this.ratio )
 
-        const children = getUpdatedChildren( this.ratio )
-
-        children.forEach( ( points, idx ) => {
-
-          // Draw child.
-          context.beginPath()
-          points.forEach( ( point: IPoint ) => context.lineTo( point.x, point.y ) )
-          context.closePath()
-
-
-          // Set colors.
-          let strokeColor = colors.stroke
-          let childColor = colors.child
-
-          if ( strokeColor ) {
-            context.strokeStyle = strokeColor
-            context.stroke()
-          }
-
-          if ( childColor ) {
-            const [r, g, b] = gsap.utils.splitColor( childColor )
-
-            let alphaUnit = 1 / children.length
-            let alpha = alphaUnit + ( alphaUnit * idx )
-
-            context.fillStyle = `rgba(${ r }, ${ g }, ${ b }, ${ alpha })`
-
-            // Set Shadow.
-            context.shadowColor = 'rgba(0,0,0, 0.1)'
-            context.shadowBlur = 10
-            context.shadowOffsetX = 0
-            context.shadowOffsetY = 0
-
-            context.fill()
-          }
-        } )
+        renderChildren( context, children )
 
         context.restore()
       }
     } )
   }
 
-  const render = ( context: CanvasRenderingContext2D ) => {
+  const renderBase = ( context: CanvasRenderingContext2D ) => {
+
+    const { base } = colors
 
     // Draw basePolygon.
-    context.beginPath()
-    points.current.forEach( ( point: IPoint ) => context.lineTo( point.x, point.y ) )
-    context.closePath()
+    drawOutline( context, basePoints )
 
-    // Set colors.
-    let strokeColor = colors.stroke
-    let childColor = colors.base
-
-    if ( strokeColor ) {
-      context.strokeStyle = strokeColor
-      context.stroke()
-    }
-
-    if ( childColor ) {
-      context.fillStyle = childColor
+    if ( base ) {
+      context.fillStyle = base
       context.fill()
     }
   }
 
-  const getRegularPolygonPoints = () => {
+  const renderChildren = ( context: CanvasRenderingContext2D, children: IPoint[][] ) => {
 
-    let points = []
+    const { child } = colors
 
-    for ( let i = 0; i < sides; i++ ) {
+    children.forEach( ( points, idx ) => {
 
-      // Note that sin and cos are inverted in order to draw
-      // polygon pointing down like: ∇
-      let x = -radius * Math.sin( i * 2 * Math.PI / sides )
-      let y = radius * Math.cos( i * 2 * Math.PI / sides )
+      // Draw child.
+      drawOutline( context, points )
 
-      points.push( { x, y } )
-    }
+      if ( child ) {
+        const [r, g, b] = gsap.utils.splitColor( child )
 
-    return points
+        let alphaUnit = 1 / children.length
+        let alpha = alphaUnit + ( alphaUnit * idx )
+
+        context.fillStyle = `rgba(${ r }, ${ g }, ${ b }, ${ alpha })`
+
+        // Set Shadow.
+        context.shadowColor = 'rgba(0,0,0, 0.1)'
+        context.shadowBlur = 10
+        context.shadowOffsetX = 0
+        context.shadowOffsetY = 0
+
+        context.fill()
+      }
+    } )
   }
 
+  const drawOutline = ( context: CanvasRenderingContext2D, points: IPoint[] ) => {
 
-  const getInscribedPoints = ( points: IPoint[], progress: number ) => {
+    const { stroke } = colors
 
-    let inscribedPoints: IPoint[] = []
+    context.beginPath()
+    points.forEach( ( point: IPoint ) => context.lineTo( point.x, point.y ) )
+    context.closePath()
 
-    for ( let i = 0; i < points.length; i++ ) {
-
-      let start = points[i]
-      let end = points[i + 1] || points[0]
-      let point = gsap.utils.interpolate( start, end, progress )
-
-      inscribedPoints.push( point )
+    if ( stroke ) {
+      context.strokeStyle = stroke
+      context.stroke()
     }
-
-    return inscribedPoints
-  }
-
-  const getUpdatedChildren = ( progress: number ) => {
-
-    let children = []
-
-    for ( let i = 0; i < depth; i++ ) {
-
-      // Get basePolygon points on first lap
-      // then get previous child points.
-      let inscribedPoints = getInscribedPoints( children[i - 1] || points.current, progress )
-
-      children.push( inscribedPoints )
-    }
-
-    return children
   }
 
   return (

@@ -2,10 +2,8 @@ import React from 'react'
 
 import Loader from './components/Loader'
 
-import './App.css'
 
-
-const App = () => {
+const App: React.FC = () => {
   return (
     <Loader
       radius={ 150 }
@@ -17,7 +15,7 @@ const App = () => {
         base: '#222222',
         child: '#f0f0f0'
       } }
-      renderBase
+      based
     />
   )
 }
