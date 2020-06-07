@@ -1,9 +1,11 @@
 import React, {
-  useCallback,
   useRef,
-  useEffect
+  useEffect,
+  forwardRef,
+  MutableRefObject
 } from 'react'
 import { gsap } from 'gsap'
+import { TransitionStatus } from 'react-transition-group/Transition'
 
 import { usePointsInterpolation } from '../../hooks'
 
@@ -24,35 +26,36 @@ interface ILoaderProps {
     child: string
   }
   based?: boolean
+  transition: TransitionStatus
 }
 
-const Loader: React.FC<ILoaderProps> = ( {
+const Loader = forwardRef<HTMLCanvasElement, ILoaderProps>( ( {
   radius,
   sides,
   depth,
   colors,
-  based
-} ) => {
+  based,
+  transition
+}, ref ) => {
 
-  const canvasRef = useRef<HTMLCanvasElement | null>( null )
   const tween = useRef<gsap.core.Tween | null>( null )
   const [ basePoints, getChildrenPoints ] = usePointsInterpolation( { radius, sides, depth } )
 
   useEffect( () => {
-    return () => {
-      tween.current?.kill()
-    }
-  }, [] )
 
-  const canvasRefCallback = useCallback( ( node: HTMLCanvasElement ) => {
-
-    if ( node ) {
-      canvasRef.current = node
-      const context = node.getContext( '2d' )
+    if ( transition === 'entering' ) {
+      const context = ( ref as MutableRefObject<HTMLCanvasElement> ).current.getContext( '2d' )
 
       if ( context ) {
         animate( context )
       }
+    }
+  }, [ ref, transition ] )
+
+  useEffect( () => {
+
+    return () => {
+      tween.current?.kill()
     }
   }, [] )
 
@@ -61,13 +64,15 @@ const Loader: React.FC<ILoaderProps> = ( {
     tween.current = gsap.to( { value: 0 }, {
       value: 1,
       duration: 2,
-      repeat: 3,
+      repeat: -1,
       ease: 'expo.inOut',
       onUpdate() {
 
-        context.clearRect( 0, 0, canvasRef.current!.width, canvasRef.current!.height )
+        const canvas = ( ref as MutableRefObject<HTMLCanvasElement> ).current
+
+        context.clearRect( 0, 0, canvas.width, canvas.height )
         context.save()
-        context.translate( canvasRef.current!.width / 2, canvasRef.current!.height / 2 )
+        context.translate( canvas.width / 2, canvas.height / 2 )
         context.lineWidth = 1.5
 
 
@@ -141,17 +146,18 @@ const Loader: React.FC<ILoaderProps> = ( {
 
   return (
     <canvas
-      ref={ canvasRefCallback }
+      ref={ ref }
       width={ window.innerWidth }
       height={ window.innerHeight }
       style={ {
         backgroundColor: colors.background,
         position: 'fixed',
         top: 0,
-        left: 0
+        left: 0,
+        marginTop: 30
       } }
     />
   )
-}
+} )
 
 export default Loader
