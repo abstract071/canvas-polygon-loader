@@ -1,6 +1,8 @@
 import React, {
   useRef,
   useEffect,
+  useCallback,
+  useState,
   forwardRef,
   MutableRefObject
 } from 'react'
@@ -9,10 +11,17 @@ import { TransitionStatus } from 'react-transition-group/Transition'
 
 import { usePointsInterpolation } from '../../hooks'
 
+import classes from './Loader.module.scss'
+
 
 interface IPoint {
   x: number
   y: number
+}
+
+interface IDimensions {
+  width: number
+  height: number
 }
 
 interface ILoaderProps {
@@ -38,6 +47,7 @@ const Loader = forwardRef<HTMLCanvasElement, ILoaderProps>( ( {
   transition
 }, ref ) => {
 
+  const [ wrapperDimensions, setWrapperDimensions ] = useState<IDimensions>( { width: 0, height: 0 } )
   const tween = useRef<gsap.core.Tween | null>( null )
   const [ basePoints, getChildrenPoints ] = usePointsInterpolation( { radius, sides, depth } )
 
@@ -56,6 +66,16 @@ const Loader = forwardRef<HTMLCanvasElement, ILoaderProps>( ( {
 
     return () => {
       tween.current?.kill()
+    }
+  }, [] )
+
+  const wrapperRef = useCallback( ( node: HTMLDivElement ) => {
+    if ( node !== null ) {
+      const dimensions = node.getBoundingClientRect()
+      setWrapperDimensions( {
+        width: dimensions.width,
+        height: dimensions.height
+      } )
     }
   }, [] )
 
@@ -145,18 +165,18 @@ const Loader = forwardRef<HTMLCanvasElement, ILoaderProps>( ( {
   }
 
   return (
-    <canvas
-      ref={ ref }
-      width={ window.innerWidth }
-      height={ window.innerHeight }
-      style={ {
-        backgroundColor: colors.background,
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        marginTop: 30
-      } }
-    />
+    <div
+      ref={ wrapperRef }
+      className={ classes['loader'] }
+    >
+      <canvas
+        ref={ ref }
+        className={ classes['loader-canvas'] }
+        width={ wrapperDimensions.width }
+        height={ wrapperDimensions.height }
+        style={ { backgroundColor: colors.background } }
+      />
+    </div>
   )
 } )
 
