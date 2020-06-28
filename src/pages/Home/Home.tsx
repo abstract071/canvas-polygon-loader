@@ -1,9 +1,8 @@
 import React, {
   forwardRef
 } from 'react'
-import {
-  Link
-} from 'react-router-dom'
+
+import GradientLink from '../../components/GradientLink'
 
 
 const Home = forwardRef<HTMLDivElement>( ( props, ref ) => {
@@ -13,9 +12,9 @@ const Home = forwardRef<HTMLDivElement>( ( props, ref ) => {
       ref={ ref }
       className="page"
     >
-      <Link to="/showroom">
-        Open
-      </Link>
+      <GradientLink to="/showroom">
+        Run Loader
+      </GradientLink>
     </div>
   )
 } )
